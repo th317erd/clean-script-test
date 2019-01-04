@@ -13,7 +13,7 @@ NOT_MERGED=()
 IFS='|'; IGNORE_PATTERN=${IGNORE_BRANCHES[*]} ; unset IFS
 REMOTE_BRANCHES=$(git branch -r | grep "$ORIGIN/" | grep -vE "$IGNORE_PATTERN")
 
-echo "Calculating for $TARGET_BRANCH..."
+echo -e "\e[93mCalculating for $TARGET_BRANCH...\e[0m"
 
 # Get all branch names
 for BRANCH in ${REMOTE_BRANCHES[@]}; do
@@ -70,10 +70,18 @@ done
 unset IFS
 
 for BRANCH in "${NOT_MERGED[@]}"; do
-  echo "Not merged (ignoring): $BRANCH"
+  echo -e "\e[32mNot merged (ignoring): $BRANCH\e[0m"
 done
 
 for BRANCH in "${DELETE_BRANCHES[@]}"; do
-  echo "Would delete branch: $BRANCH"
+  echo -e "\e[31mWill delete branch: $BRANCH\e[0m"
 done
 
+PROMPT=''
+read -p "!!!WARNING!!! The listed branches will be deleted locally and from the remote ($ORIGIN)."$'\n'"To continue with this descructive operation, please type (exactly) 'please proceed' and press enter: " PROMPT
+
+if [[ "$PROMPT" == "please proceed" ]]; then
+  echo "Proceeding!"
+else
+  echo "Aborting!"
+fi
