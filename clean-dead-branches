@@ -1,20 +1,24 @@
 #!/bin/bash
 
+ORIGIN="origin"
 TARGET_BRANCH="production"
 OLDER_THAN_DAYS="0"
+IGNORE_BRANCHES=("$ORIGIN/dev" "$ORIGIN/development" "$ORIGIN/staging" "$ORIGIN/$TARGET_BRANCH" "$ORIGIN/HEAD" "$ORIGIN/master")
 
 TS=$(date "+%s")
 BRANCHES=()
 OLDER_THAN_SECONDS=$((OLDER_THAN_DAYS * 86400))
 NOT_MERGED=()
-REMOTE_BRANCHES=$(git branch -r | grep -vE "origin/HEAD|origin/master|origin/$TARGET_BRANCH")
+
+IFS='|'; IGNORE_PATTERN=${IGNORE_BRANCHES[*]} ; unset IFS
+REMOTE_BRANCHES=$(git branch -r | grep "$ORIGIN/" | grep -vE "$IGNORE_PATTERN")
 
 echo "Calculating for $TARGET_BRANCH..."
 
 # Get all branch names
 for BRANCH in ${REMOTE_BRANCHES[@]}; do
-  # Check if branch has been merged with production (exit code other than )
-  git merge-base --is-ancestor "$BRANCH" "origin/$TARGET_BRANCH" >> /dev/null
+  # Check if branch has been merged with production (exit code other than 0)
+  git merge-base --is-ancestor "$BRANCH" "$ORIGIN/$TARGET_BRANCH" >> /dev/null
   IS_MERGED=$?
 
   if ((IS_MERGED > 0)); then
@@ -49,9 +53,7 @@ if ((LEN == 0)); then
 fi
 
 # Sort our BRANCHES array by TIME
-IFS=$'\n';
-BRANCHES=($(echo "${BRANCHES[*]}" | sort))
-unset IFS
+IFS=$'\n'; BRANCHES=($(echo "${BRANCHES[*]}" | sort)); unset IFS
 
 DELETE_BRANCHES=()
 
@@ -67,10 +69,11 @@ for BRANCH in "${BRANCHES[@]}"; do
 done
 unset IFS
 
+for BRANCH in "${NOT_MERGED[@]}"; do
+  echo "Not merged (ignoring): $BRANCH"
+done
+
 for BRANCH in "${DELETE_BRANCHES[@]}"; do
   echo "Would delete branch: $BRANCH"
 done
 
-for BRANCH in "${NOT_MERGED[@]}"; do
-  echo "Not merged: $BRANCH"
-done
