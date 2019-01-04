@@ -1,0 +1,71 @@
+#!/bin/bash
+
+TARGET_BRANCH="master"
+OLDER_THAN_DAYS="60"
+
+TS=$(date "+%s")
+BRANCHES=()
+OLDER_THAN_SECONDS=$((OLDER_THAN_DAYS * 86400))
+NOT_MERGED=()
+
+echo "Calculating for $TARGET_BRANCH..."
+
+# Get all branch names
+for BRANCH in $(git branch -r | grep -v 'origin/HEAD' | grep -v 'origin/master'); do
+  # Check if branch has been merged with production (exit code other than )
+  git merge-base --is-ancestor "$BRANCH" "origin/$TARGET_BRANCH" >> /dev/null
+  IS_MERGED=$?
+
+  if ((IS_MERGED > 0)); then
+    NOT_MERGED+=("$BRANCH")
+    # echo "Ignoring ${BRANCH} because it isn't yet merged...";
+    continue;
+  fi
+
+  # Get branch HEAD commit hash
+  HASH=$(git rev-parse "$BRANCH")
+
+  # Get timestamp of HASH
+  TIME=$(git log -1 --pretty=tformat:%at "$HASH")
+
+  # Get timestamp diff between TIME (HASH) and TS (now)
+  DIFF=$((TS - TIME))
+
+  # If diff is larger than our threashold then add it to the BRANCHES array
+  if ((DIFF > OLDER_THAN_SECONDS)); then
+    # echo "Remote branch: $BRANCH is old $(date -d "@$TIME")"
+    BRANCHES+=("$TIME:$BRANCH")
+  else
+    # echo "Ignoring ${BRANCH} because it isn't old enough...";
+    continue
+  fi
+done
+
+LEN=${#BRANCHES[@]}
+if ((LEN == 0)); then
+  echo "Nothing to do. Repository is clean"
+  exit 0
+fi
+
+# Sort our BRANCHES array by TIME
+IFS=$'\n' ; BRANCHES=$(echo "${BRANCHES[*]}" | sort) ; unset IFS
+
+DELETE_BRANCHES=()
+
+# Iterate BRANCHES array
+for BRANCH in "${BRANCHES[@]}"; do
+  # Split item apart and place into PARTS array
+  IFS=':' ; read -ra PARTS <<< "$BRANCH" ; unset IFS
+
+  # Re-assign parts to specific variables
+  BRANCH=${PARTS[1]}
+  DELETE_BRANCHES+=("$BRANCH")
+done
+
+for BRANCH in "${DELETE_BRANCHES[@]}"; do
+  echo "Would delete branch: $BRANCH"
+done
+
+for BRANCH in "${NOT_MERGED[@]}"; do
+  echo "Not merged: $BRANCH"
+done
