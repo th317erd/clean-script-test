@@ -97,13 +97,13 @@ fi
 for BRANCH in "${DELETE_BRANCHES[@]}"; do
   BRANCH_NAME=$(echo "$BRANCH" | cut -d '/' -f 2)
   echo -e "\e[31mDeleting branch $BRANCH_NAME...\e[0m"
-  # git push --delete "$ORIGIN" "$BRANCH_NAME"
+  git push --delete "$ORIGIN" "$BRANCH_NAME"
   if (($? != 0)); then
     echo -e "\e[31mFailed to delete $ORIGIN/$BRANCH_NAME... Not deleting local $BRANCH_NAME\e[0m"
     continue
   fi
 
-  # git branch -d "$BRANCH"
+  git branch -d "$BRANCH_NAME"
   if (($? != 0)); then
     echo -e "\e[31mFailed to delete local $BRANCH_NAME... You will need to manually cleanup\e[0m"
     continue
