@@ -1,17 +1,18 @@
 #!/bin/bash
 
 TARGET_BRANCH="production"
-OLDER_THAN_DAYS="60"
+OLDER_THAN_DAYS="0"
 
 TS=$(date "+%s")
 BRANCHES=()
 OLDER_THAN_SECONDS=$((OLDER_THAN_DAYS * 86400))
 NOT_MERGED=()
+REMOTE_BRANCHES=$(git branch -r | grep -vE "origin/HEAD|origin/master|origin/$TARGET_BRANCH")
 
 echo "Calculating for $TARGET_BRANCH..."
 
 # Get all branch names
-for BRANCH in $(git branch -r | grep -v 'origin/HEAD' | grep -v 'origin/master'); do
+for BRANCH in ${REMOTE_BRANCHES[@]}; do
   # Check if branch has been merged with production (exit code other than )
   git merge-base --is-ancestor "$BRANCH" "origin/$TARGET_BRANCH" >> /dev/null
   IS_MERGED=$?
@@ -48,19 +49,23 @@ if ((LEN == 0)); then
 fi
 
 # Sort our BRANCHES array by TIME
-IFS=$'\n' ; BRANCHES=$(echo "${BRANCHES[*]}" | sort) ; unset IFS
+IFS=$'\n';
+BRANCHES=($(echo "${BRANCHES[*]}" | sort))
+unset IFS
 
 DELETE_BRANCHES=()
 
+IFS=':';
 # Iterate BRANCHES array
 for BRANCH in "${BRANCHES[@]}"; do
   # Split item apart and place into PARTS array
-  IFS=':' ; read -ra PARTS <<< "$BRANCH" ; unset IFS
+  read -ra PARTS <<< "$BRANCH"
 
   # Re-assign parts to specific variables
   BRANCH=${PARTS[1]}
   DELETE_BRANCHES+=("$BRANCH")
 done
+unset IFS
 
 for BRANCH in "${DELETE_BRANCHES[@]}"; do
   echo "Would delete branch: $BRANCH"
